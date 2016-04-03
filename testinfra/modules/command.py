@@ -15,6 +15,8 @@
 
 from __future__ import unicode_literals
 
+import pytest
+
 from testinfra.modules.base import Module
 
 
@@ -45,3 +47,11 @@ class Command(Module):
 
     def __repr__(self):
         return "<command>"
+
+    @classmethod
+    def as_fixture(cls):
+        @pytest.fixture(scope="session")
+        def f(_testinfra_backend):
+            return Command()
+        f.__doc__ = cls.__doc__
+        return f

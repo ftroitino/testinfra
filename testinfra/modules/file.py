@@ -17,18 +17,17 @@ from __future__ import unicode_literals
 
 import datetime
 
+import pytest
+
 from testinfra.modules.base import Module
 
 
 class File(Module):
     """Test various files attributes"""
 
-    def __init__(self, _backend, path):
+    def __init__(self, path):
         self.path = path
-        super(File, self).__init__(_backend)
-
-    def __call__(self, path):
-        return self.__class__(self._backend, path)
+        super(File, self).__init__()
 
     @property
     def exists(self):
@@ -99,31 +98,15 @@ class File(Module):
 
     @property
     def mode(self):
-        """Return file mode as octal integer
+        """Return file mode as integer
 
         >>> File("/etc/passwd").mode
-        384  # 0o600 (octal)
-        >>> File("/etc/password").mode == 0o600
-        True
-        >>> oct(File("/etc/password").mode) == '0600'
-        True
-
-        Note: Python 3 oct(x)_ function will produce ``'0o600'``
-
-        You can also utilize the file mode constants from
-        the stat_ library for testing file mode.
-
-        >>> import stat
-        >>> File("/etc/password").mode == stat.S_IRUSR | stat.S_IWUSR
-        True
-
-        .. _oct(x): https://docs.python.org/3.5/library/functions.html#oct
-        .. _stat: https://docs.python.org/2/library/stat.html
+        644
         """
         raise NotImplementedError
 
     def contains(self, pattern):
-        return self.run_test("grep -qs -- %s %s", pattern, self.path).rc == 0
+        return self.run_test("grep -qs -P -- %s %s", pattern, self.path).rc == 0
 
     @property
     def md5sum(self):
@@ -178,16 +161,19 @@ class File(Module):
         return "<file %s>" % (self.path,)
 
     @classmethod
-    def get_module(cls, _backend):
-        SystemInfo = _backend.get_module("SystemInfo")
-        if SystemInfo.type == "linux":
-            return GNUFile(_backend, None)
-        elif SystemInfo.type == "netbsd":
-            return NetBSDFile(_backend, None)
-        elif SystemInfo.type.endswith("bsd"):
-            return BSDFile(_backend, None)
-        else:
-            raise NotImplementedError
+    def as_fixture(cls):
+        @pytest.fixture(scope="session")
+        def f(SystemInfo):
+            if SystemInfo.type == "linux":
+                return GNUFile
+            elif SystemInfo.type == "netbsd":
+                return NetBSDFile
+            elif SystemInfo.type.endswith("bsd"):
+                return BSDFile
+            else:
+                raise NotImplementedError
+        f.__doc__ = cls.__doc__
+        return f
 
 
 class GNUFile(File):
@@ -209,9 +195,7 @@ class GNUFile(File):
 
     @property
     def mode(self):
-        # Supply a base of 8 when parsing an octal integer
-        # e.g. int('644', 8) -> 420
-        return int(self.check_output("stat -c %%a %s", self.path), 8)
+        return int(self.check_output("stat -c %%a %s", self.path))
 
     @property
     def mtime(self):
@@ -251,9 +235,7 @@ class BSDFile(File):
 
     @property
     def mode(self):
-        # Supply a base of 8 when parsing an octal integer
-        # e.g. int('644', 8) -> 420
-        return int(self.check_output("stat -f %%Lp %s", self.path), 8)
+        return int(self.check_output("stat -f %%Lp %s", self.path))
 
     @property
     def mtime(self):

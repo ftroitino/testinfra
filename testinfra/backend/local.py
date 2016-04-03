@@ -23,13 +23,17 @@ logger = logging.getLogger("testinfra.backend")
 
 
 class LocalBackend(base.BaseBackend):
+    _backend_type = "local"
 
-    def __init__(self, sudo=False, **kwargs):
+    def __init__(self, sudo=False, *args, **kwargs):
         self.sudo = sudo
-        super(LocalBackend, self).__init__(**kwargs)
+        super(LocalBackend, self).__init__(*args, **kwargs)
 
-    def run_local(self, command, *args):
+    def run(self, command, *args, **kwargs):
+        if self.sudo:
+            command = "sudo " + command
         command = self.quote(command, *args)
+        logger.info("RUN %s", command)
         command = self.encode(command)
         p = subprocess.Popen(
             command, shell=True,
@@ -41,8 +45,3 @@ class LocalBackend(base.BaseBackend):
         return base.CommandResult(
             self, p.returncode, stdout, stderr, command,
         )
-
-    def run(self, command, *args, **kwargs):
-        if self.sudo:
-            command = "sudo " + command
-        return self.run_local(command, *args)

@@ -28,22 +28,24 @@ except ImportError:
 else:
     HAS_PARAMIKO = True
 
-    class IgnorePolicy (paramiko.MissingHostKeyPolicy):
-        """Policy for ignoring missing host key."""
-        def missing_host_key(self, client, hostname, key):
-            pass
-
 logger = logging.getLogger("testinfra.backend")
 
 
-class ParamikoBackend(base.BaseBackend):
+class ParamikoBakend(base.BaseBackend):
+    _backend_type = "paramiko"
 
     def __init__(self, hostspec, ssh_config=None, sudo=False, *args, **kwargs):
         self.host, self.user, self.port = self.parse_hostspec(hostspec)
+        user_pass=self.user.split(":")
+        if len(user_pass) == 2:
+          self.user=user_pass[0]
+          self.password=user_pass[1]
+        else:
+          self.password=None
         self.ssh_config = ssh_config
         self.sudo = sudo
         self._client = None
-        super(ParamikoBackend, self).__init__(*args, **kwargs)
+        super(ParamikoBakend, self).__init__(*args, **kwargs)
 
     @property
     def client(self):
@@ -58,6 +60,7 @@ class ParamikoBackend(base.BaseBackend):
                 "hostname": self.host,
                 "port": int(self.port) if self.port else 22,
                 "username": self.user,
+                "password": self.password,
             }
             if self.ssh_config:
                 ssh_config = paramiko.SSHConfig()
@@ -73,8 +76,6 @@ class ParamikoBackend(base.BaseBackend):
                         cfg[key] = int(value)
                     elif key == "identityfile":
                         cfg["key_filename"] = os.path.expanduser(value[0])
-                    elif key == "stricthostkeychecking" and value == "no":
-                        client.set_missing_host_key_policy(IgnorePolicy())
 
             client.connect(**cfg)
             self._client = client

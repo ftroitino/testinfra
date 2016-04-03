@@ -24,14 +24,23 @@ from testinfra.modules.puppet import Facter
 from testinfra.modules.puppet import PuppetResource
 from testinfra.modules.salt import Salt
 from testinfra.modules.service import Service
-from testinfra.modules.socket import Socket
 from testinfra.modules.sysctl import Sysctl
 from testinfra.modules.systeminfo import SystemInfo
 from testinfra.modules.user import User
-
+from testinfra.modules.port import Port
+from testinfra.modules.ip_port import Ip_Port
+from testinfra.modules.process import Process
+from testinfra.modules.repoyum import RepoYum
+from testinfra.modules.mount import Mount
+from testinfra.modules.http import Http
+from testinfra.modules.package_pip import Package_Pip
+from testinfra.modules.selinux import Selinux
+from testinfra.modules.connectivity import Connectivity
+from testinfra.modules.execute import Execute
+from testinfra.modules.socket import Socket 
 
 __all__ = [
     "Command", "File", "Package", "Group", "Interface",
     "Service", "SystemInfo", "User", "Salt", "PuppetResource",
-    "Facter", "Sysctl", "Socket",
+    "Facter", "Sysctl","Port","IP_Port","Process","RepoYum","Http","Package_Pip","Selinux","Connectivity","Execute","Socket",
 ]

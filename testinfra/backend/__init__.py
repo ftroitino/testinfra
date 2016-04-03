@@ -15,42 +15,23 @@
 
 from __future__ import unicode_literals
 
-from six.moves import urllib
-
-from testinfra.backend import docker
 from testinfra.backend import local
 from testinfra.backend import paramiko
 from testinfra.backend import salt
 from testinfra.backend import ssh
 
-BACKENDS = dict((name, klass) for name, klass in (
-    ("local", local.LocalBackend),
-    ("ssh", ssh.SshBackend),
-    ("safe-ssh", ssh.SafeSshBackend),
-    ("paramiko", paramiko.ParamikoBackend),
-    ("salt", salt.SaltBackend),
-    ("docker", docker.DockerBackend),
+BACKENDS = dict((klass.get_backend_type(), klass) for klass in (
+    local.LocalBackend,
+    ssh.SshBackend,
+    ssh.SafeSshBackend,
+    paramiko.ParamikoBakend,
+    salt.SaltBackend,
 ))
 
 
-def get_backend(hostspec, connection="paramiko://", **kwargs):
-    kw = kwargs.copy()
-    if "://" in hostspec:
-        url = urllib.parse.urlparse(hostspec)
-        connection = url.scheme
-        host = url.netloc
-        query = urllib.parse.parse_qs(url.query)
-        if query.get("sudo", ["false"])[0].lower() == "true":
-            kw["sudo"] = True
-        if "ssh_config" in query:
-            kw["ssh_config"] = query.get("ssh_config")[0]
-    else:
-        host = hostspec
+def get_backend(backend_type, *args, **kwargs):
     try:
-        klass = BACKENDS[connection]
+        backend_class = BACKENDS[backend_type]
     except KeyError:
-        raise RuntimeError("Unknown connection type '%s'" % (connection,))
-    if connection == "local":
-        return klass(**kw)
-    else:
-        return klass(host, **kw)
+        raise RuntimeError("Unknown backend '%s'" % (backend_type,))
+    return backend_class(*args, **kwargs)

@@ -27,7 +27,7 @@ else:
 
 
 class SaltBackend(base.BaseBackend):
-    HAS_RUN_SALT = True
+    _backend_type = "salt"
 
     def __init__(self, host, sudo=False, *args, **kwargs):
         self.host = host
@@ -53,9 +53,4 @@ class SaltBackend(base.BaseBackend):
             self, out['retcode'], out['stdout'], out['stderr'], command)
 
     def run_salt(self, func, args=None):
-        out = self.client.cmd(self.host, func, args or [])
-        if self.host not in out:
-            raise RuntimeError(
-                "Error while running %s(%s): %s. Minion not connected ?" % (
-                    func, args, out))
-        return out[self.host]
+        return self.client.cmd(self.host, func, args or [])[self.host]

@@ -18,10 +18,12 @@ from __future__ import unicode_literals
 import pytest
 
 pytestmark = pytest.mark.integration
-testinfra_hosts = [
-    "%s://centos_7" % (b_type,)
-    for b_type in ("ssh", "paramiko", "safe-ssh", "docker")
-]
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _skip(Sysctl):
+    if Sysctl("kernel.hostname") != "centos_7":
+        pytest.skip()
 
 
 def test_ssh_package(Package):

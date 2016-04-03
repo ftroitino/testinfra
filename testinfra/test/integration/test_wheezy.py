@@ -18,10 +18,12 @@ from __future__ import unicode_literals
 import pytest
 
 pytestmark = pytest.mark.integration
-testinfra_hosts = [
-    "%s://debian_wheezy" % (b_type,)
-    for b_type in ("ssh", "paramiko", "safe-ssh", "docker")
-]
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _skip(Sysctl):
+    if Sysctl("kernel.hostname") != "debian_wheezy":
+        pytest.skip()
 
 
 def test_ssh_package(Package):
@@ -62,8 +64,3 @@ def test_nonexistent_user(User):
 
 def test_current_user(User):
     assert User().name == "root"
-
-
-def test_group(Group):
-    assert Group("root").exists
-    assert Group("root").gid == 0

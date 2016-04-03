@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 
 import pytest
 import testinfra
+
 from testinfra import modules
 
 File = modules.File.as_fixture()
@@ -32,22 +33,33 @@ Salt = modules.Salt.as_fixture()
 PuppetResource = modules.PuppetResource.as_fixture()
 Facter = modules.Facter.as_fixture()
 Sysctl = modules.Sysctl.as_fixture()
+Port = modules.Port.as_fixture()
+Ip_Port = modules.Ip_Port.as_fixture()
+Process = modules.Process.as_fixture()
+RepoYum = modules.RepoYum.as_fixture()
+Mount = modules.Mount.as_fixture()
+Http = modules.Http.as_fixture()
+Package_Pip = modules.Package_Pip.as_fixture()
+Selinux = modules.Selinux.as_fixture()
+Connectivity = modules.Connectivity.as_fixture()
+Execute = modules.Execute.as_fixture() 	
 Socket = modules.Socket.as_fixture()
 
-
-@pytest.fixture(scope="module")
-def _testinfra_backend(request, pytestconfig, _testinfra_host):
-    kwargs = {"connection": pytestconfig.option.connection or "paramiko"}
+@pytest.fixture(scope="session")
+def _testinfra_backend(pytestconfig, _testinfra_host):
+    kwargs = {}
     if pytestconfig.option.ssh_config is not None:
         kwargs["ssh_config"] = pytestconfig.option.ssh_config
     if pytestconfig.option.sudo is not None:
         kwargs["sudo"] = pytestconfig.option.sudo
-    return testinfra.get_backend(_testinfra_host, **kwargs)
-
-
-@pytest.fixture(scope="module")
-def LocalCommand(_testinfra_backend):
-    return testinfra.get_backend("local://").get_module("Command")
+    if _testinfra_host is not None:
+        backend_type = pytestconfig.option.connection or "paramiko"
+        testinfra.set_backend(
+            backend_type,
+            _testinfra_host,
+            **kwargs)
+    else:
+        testinfra.set_backend("local", **kwargs)
 
 
 def pytest_addoption(parser):
@@ -56,7 +68,7 @@ def pytest_addoption(parser):
         "--connection",
         action="store",
         dest="connection",
-        help="Remote connection backend paramiko|ssh|safe-ssh|salt|docker",
+        help="Remote connection backend paramiko|ssh|safe_ssh|salt",
     )
     group._addoption(
         "--hosts",
@@ -89,11 +101,8 @@ def pytest_generate_tests(metafunc):
         if metafunc.config.option.hosts is not None:
             params = metafunc.config.option.hosts.split(",")
             ids = params
-        elif hasattr(metafunc.module, "testinfra_hosts"):
-            params = metafunc.module.testinfra_hosts
-            ids = params
         else:
-            params = ["local://"]
+            params = [None]
             ids = ["local"]
         metafunc.parametrize(
-            "_testinfra_host", params, ids=ids, scope="module")
+            "_testinfra_host", params, ids=ids, scope="session")

@@ -23,6 +23,7 @@ from testinfra.backend import local
 
 class SshBackend(local.LocalBackend):
     """Run command through ssh command"""
+    _backend_type = "ssh"
 
     def __init__(self, hostspec, ssh_config=None, *args, **kwargs):
         self.host, self.user, self.port = self.parse_hostspec(hostspec)
@@ -30,7 +31,6 @@ class SshBackend(local.LocalBackend):
         super(SshBackend, self).__init__(*args, **kwargs)
 
     def run(self, command, *args, **kwargs):
-        command = self.quote(command, *args)
         cmd = ["ssh"]
         cmd_args = []
         if self.ssh_config:
@@ -43,11 +43,12 @@ class SshBackend(local.LocalBackend):
             cmd.append("-o Port=%s")
             cmd_args.append(self.port)
         cmd.append("%s %s")
-        cmd_args.extend([self.host, command])
-        out = super(SshBackend, self).run(
+        cmd_args.extend([
+            self.host,
+            self.quote(command, *args),
+        ])
+        return super(SshBackend, self).run(
             " ".join(cmd), *cmd_args, **kwargs)
-        out.command = self.encode(command)
-        return out
 
 
 class SafeSshBackend(SshBackend):
@@ -64,6 +65,7 @@ class SafeSshBackend(SshBackend):
     where STDOUT/STDERR are base64 encoded, then we parse that magic string to
     get sanes variables
     """
+    _backend_type = "safe_ssh"
 
     def run(self, command, *args, **kwargs):
         orig_command = self.quote(command, *args)
@@ -79,6 +81,4 @@ class SafeSshBackend(SshBackend):
         rc = int(rc)
         stdout = base64.b64decode(stdout)
         stderr = base64.b64decode(stderr)
-        return base.CommandResult(
-            self, rc, stdout, stderr,
-            self.encode(orig_command))
+        return base.CommandResult(self, rc, stdout, stderr, orig_command)

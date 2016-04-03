@@ -15,15 +15,17 @@
 
 from __future__ import unicode_literals
 
+import pytest
+
 from testinfra.modules.base import Module
 
 
 class SystemInfo(Module):
     """Return system informations"""
 
-    def __init__(self, _backend):
+    def __init__(self):
         self._sysinfo = None
-        super(SystemInfo, self).__init__(_backend)
+        super(SystemInfo, self).__init__()
 
     @property
     def sysinfo(self):
@@ -125,3 +127,11 @@ class SystemInfo(Module):
     @property
     def hostname(self):
         return self.check_output("hostname -s")
+
+    @classmethod
+    def as_fixture(cls):
+        @pytest.fixture(scope="session")
+        def f(_testinfra_backend):
+            return SystemInfo()
+        f.__doc__ = cls.__doc__
+        return f

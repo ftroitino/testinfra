@@ -86,13 +86,6 @@ Service
     .. attribute:: is_enabled
 
 
-Socket
-~~~~~~
-
-.. autoclass:: testinfra.modules.Socket(spec)
-   :members:
-
-
 SystemInfo
 ~~~~~~~~~~
 

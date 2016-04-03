@@ -15,18 +15,17 @@
 
 from __future__ import unicode_literals
 
+import pytest
+
 from testinfra.modules.base import Module
 
 
 class Service(Module):
     """Test services"""
 
-    def __init__(self, _backend, name):
+    def __init__(self, name):
         self.name = name
-        super(Service, self).__init__(_backend)
-
-    def __call__(self, name):
-        return self.__class__(self._backend, name)
+        super(Service, self).__init__()
 
     @property
     def is_running(self):
@@ -39,26 +38,27 @@ class Service(Module):
         raise NotImplementedError
 
     @classmethod
-    def get_module(cls, _backend):
-        SystemInfo = _backend.get_module("SystemInfo")
-        Command = _backend.get_module("Command")
-        File = _backend.get_module("File")
-        if SystemInfo.type == "linux":
-            if (
-                Command.run_test("which systemctl").rc == 0
-                and "systemd" in File("/sbin/init").linked_to
-            ):
-                return SystemdService(_backend, None)
+    def as_fixture(cls):
+        @pytest.fixture(scope="session")
+        def f(SystemInfo, Command, File):
+            if SystemInfo.type == "linux":
+                if (
+                    Command.run_test("which systemctl").rc == 0
+                    and "systemd" in File("/sbin/init").linked_to
+                ):
+                    return SystemdService
+                else:
+                    return LinuxService
+            elif SystemInfo.type == "freebsd":
+                return FreeBSDService
+            elif SystemInfo.type == "openbsd":
+                return OpenBSDService
+            elif SystemInfo.type == "netbsd":
+                return NetBSDService
             else:
-                return LinuxService(_backend, None)
-        elif SystemInfo.type == "freebsd":
-            return FreeBSDService(_backend, None)
-        elif SystemInfo.type == "openbsd":
-            return OpenBSDService(_backend, None)
-        elif SystemInfo.type == "netbsd":
-            return NetBSDService(_backend, None)
-        else:
-            raise NotImplementedError
+                raise NotImplementedError
+        f.__doc__ = cls.__doc__
+        return f
 
     def __repr__(self):
         return "<service %s>" % (self.name,)
@@ -74,7 +74,17 @@ class LinuxService(Service):
         # 3: not running and pid file does not exists
         # 4: Unable to determine status
         return self.run_expect(
-            [0, 1, 3], "service %s status", self.name).rc == 0
+            [0, 1, 3], "/sbin/service %s status", self.name).rc == 0
+
+    @property
+    def is_running_sudo(self):
+        # based on /lib/lsb/init-functions
+        # 0: program running
+        # 1: program is dead and pid file exists
+        # 3: not running and pid file does not exists
+        # 4: Unable to determine status
+        return self.run_expect(
+            [0, 1, 3], "sudo /sbin/service %s status", self.name).rc == 0
 
     @property
     def is_enabled(self):

@@ -15,18 +15,17 @@
 
 from __future__ import unicode_literals
 
+import pytest
+
 from testinfra.modules.base import Module
 
 
 class Interface(Module):
     """Test network interfaces"""
 
-    def __init__(self, _backend, name):
+    def __init__(self, name):
         self.name = name
-        super(Interface, self).__init__(_backend)
-
-    def __call_(self, name):
-        return self.__class__(self._backend, name)
+        super(Interface, self).__init__()
 
     @property
     def exists(self):
@@ -49,21 +48,24 @@ class Interface(Module):
         return "<interface %s>" % (self.name,)
 
     @classmethod
-    def get_module(cls, _backend):
-        SystemInfo = _backend.get_module("SystemInfo")
-        if SystemInfo.type == "linux":
-            return LinuxInterface(_backend, None)
-        elif SystemInfo.type.endswith("bsd"):
-            return BSDInterface(_backend, None)
-        else:
-            raise NotImplementedError
+    def as_fixture(cls):
+        @pytest.fixture(scope="session")
+        def f(SystemInfo):
+            if SystemInfo.type == "linux":
+                return LinuxInterface
+            elif SystemInfo.type.endswith("bsd"):
+                return BSDInterface
+            else:
+                raise NotImplementedError
+        f.__doc__ = cls.__doc__
+        return f
 
 
 class LinuxInterface(Interface):
 
     @property
     def exists(self):
-        return self.run_test("ip link show %s", self.name).rc == 0
+        return self.run_test("/sbin/ip link show %s", self.name).rc == 0
 
     @property
     def speed(self):
@@ -72,7 +74,7 @@ class LinuxInterface(Interface):
 
     @property
     def addresses(self):
-        stdout = self.check_output("ip addr show %s", self.name)
+        stdout = self.check_output("/sbin/ip addr show %s", self.name)
         addrs = []
         for line in stdout.splitlines():
             splitted = [e.strip() for e in line.split(" ") if e]

@@ -15,24 +15,21 @@
 
 from __future__ import unicode_literals
 
-import itertools
-
 import pytest
 
 pytestmark = pytest.mark.integration
-testinfra_hosts = [
-    "%s://ubuntu_trusty?sudo=%s" % (b_type, sudo)
-    for b_type, sudo in itertools.product(
-        ["ssh", "paramiko", "safe-ssh", "docker"],
-        ["true", "false"],
-    )
-]
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _skip(Sysctl):
+    if Sysctl("kernel.hostname") != "ubuntu_trusty":
+        pytest.skip()
 
 
 def test_ssh_package(Package):
     ssh = Package("openssh-server")
     assert ssh.is_installed
-    assert ssh.version.startswith("1:6.6p1-2ubuntu")
+    assert ssh.version == "1:6.6p1-2ubuntu2"
 
 
 def test_ssh_service(Service):

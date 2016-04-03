@@ -15,6 +15,8 @@
 
 from __future__ import unicode_literals
 
+import pytest
+
 from testinfra.modules.base import Module
 
 
@@ -28,7 +30,7 @@ class Sysctl(Module):
     """
 
     def __call__(self, name):
-        value = self.check_output("sysctl -n %s", name)
+        value = self.check_output("/sbin/sysctl -n %s", name)
         try:
             return int(value)
         except ValueError:
@@ -36,3 +38,11 @@ class Sysctl(Module):
 
     def __repr__(self):
         return "<sysctl>"
+
+    @classmethod
+    def as_fixture(cls):
+        @pytest.fixture(scope="session")
+        def f(_testinfra_backend):
+            return Sysctl()
+        f.__doc__ = cls.__doc__
+        return f

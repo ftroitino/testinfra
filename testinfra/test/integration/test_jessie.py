@@ -18,10 +18,12 @@ from __future__ import unicode_literals
 import pytest
 
 pytestmark = pytest.mark.integration
-testinfra_hosts = [
-    "%s://debian_jessie" % (b_type,)
-    for b_type in ("ssh", "paramiko", "safe-ssh", "docker")
-]
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _skip(Sysctl):
+    if Sysctl("kernel.hostname") != "debian_jessie":
+        pytest.skip()
 
 
 def test_ssh_package(Package):
@@ -65,49 +67,14 @@ def test_sysctl(Sysctl):
     assert isinstance(Sysctl("kernel.panic"), int)
 
 
-def test_encoding(_testinfra_host, Command):
+def test_encoding(Command):
     # jessie image is fr_FR@ISO-8859-15
     cmd = Command("ls -l %s", "/é")
     assert cmd.command == b"ls -l '/\xe9'"
-    if _testinfra_host.startswith("docker://"):
-        # docker bug ?
-        assert cmd.stderr_bytes == (
-            b"ls: impossible d'acc\xe9der \xe0 /\xef\xbf\xbd: "
-            b"Aucun fichier ou dossier de ce type\n"
-        )
-    else:
-        assert cmd.stderr_bytes == (
-            b"ls: impossible d'acc\xe9der \xe0 /\xe9: "
-            b"Aucun fichier ou dossier de ce type\n"
-        )
-        assert cmd.stderr == (
-            "ls: impossible d'accéder à /é: "
-            "Aucun fichier ou dossier de ce type\n"
-        )
-
-
-def test_socket(_testinfra_host, Socket):
-    listening = Socket.get_listening_sockets()
-    for spec in (
-        "tcp://0.0.0.0:22",
-        "tcp://:::22",
-        "unix:///run/systemd/private",
-    ):
-        assert spec in listening
-    for spec in (
-        "tcp://22",
-        "tcp://0.0.0.0:22",
-        "tcp://127.0.0.1:22",
-        "tcp://:::22",
-        "tcp://::1:22",
-    ):
-        socket = Socket(spec)
-        assert socket.is_listening
-
-    if not _testinfra_host.startswith("docker://"):
-        for spec in (
-            "tcp://22",
-            "tcp://0.0.0.0:22",
-        ):
-            assert len(Socket(spec).clients) >= 1
-    assert not Socket("tcp://4242").is_listening
+    assert cmd.stderr_bytes == (
+        b"ls: impossible d'acc\xe9der \xe0 /\xe9: "
+        b"Aucun fichier ou dossier de ce type\n"
+    )
+    assert cmd.stderr == (
+        "ls: impossible d'accéder à /é: Aucun fichier ou dossier de ce type\n"
+    )

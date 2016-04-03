@@ -68,30 +68,25 @@ def parse_socketspec(socketspec):
 
 class Socket(Module):
     """Test listening tcp/udp and unix sockets
-
-    `spec` must be specified as `<protocol>://<host>:<port>`
-
+    ``socketspec`` must be specified as ``<protocol>://<host>:<port>``
     Example:
-
-      - Unix sockets: `unix:///var/run/docker.sock`
-      - All ipv4 and ipv6 tcp sockets on port 22: `tcp://22`
-      - All ipv4 sockets on port 22: `tcp://0.0.0.0:22`
-      - All ipv6 sockets on port 22: `tcp://:::22`
-      - udp socket on 127.0.0.1 port 69: `udp://127.0.0.1:69`
-
+      - Unix sockets: ``unix:///var/run/docker.sock``
+      - All ipv4 and ipv6 tcp sockets on port 22: ``tcp://22``
+      - All ipv4 sockets on port 22: ``tcp://0.0.0.0:22``
+      - All ipv6 sockets on port 22: ``tcp://:::22``
+      - udp socket on 127.0.0.1 port 69: ``udp://127.0.0.1:69``
     """
 
-    def __init__(self, _backend, socketspec):
+    def __init__(self, socketspec):
         if socketspec is not None:
             self.protocol, self.host, self.port = parse_socketspec(socketspec)
         else:
             self.protocol = self.host = self.port = None
-        super(Socket, self).__init__(_backend)
+        super(Socket, self).__init__()
 
     @property
     def is_listening(self):
         """Test if socket is listening
-
         >>> Socket("unix:///var/run/docker.sock").is_listening
         False
         >>> # This HTTP server listen on all ipv4 adresses but not on ipv6
@@ -101,13 +96,12 @@ class Socket(Module):
         False
         >>> Socket("tcp://80").is_listening
         False
-
         .. note:: If you don't specify a host for udp and tcp sockets,
                   then the socket is listening if and only if the
                   socket listen on **both** all ipv4 and ipv6 addresses
                   (ie 0.0.0.0 and ::)
         """
-        sockets = self._get_sockets(True)
+        sockets = self.get_sockets(True)
         if self.protocol == "unix":
             return ("unix", self.host) in sockets
         else:
@@ -127,19 +121,16 @@ class Socket(Module):
     @property
     def clients(self):
         """Return a list of clients connected to a listening socket
-
         For tcp and udp sockets a list of pair (adress, port) is returned.
         For unix sockets a list of None is returned (thus you can make a
         len() for counting clients).
-
         >>> Socket("tcp://22").clients
         [('2001:db8:0:1', 44298), ('192.168.31.254', 34866)]
         >>> Socket("unix:///var/run/docker.sock")
         [None, None, None]
-
         """
         sockets = []
-        for sock in self._get_sockets(False):
+        for sock in self.get_sockets(False):
             if sock[0] != self.protocol:
                 continue
 
@@ -160,14 +151,14 @@ class Socket(Module):
                 sockets.append((sock[3], sock[4]))
         return sockets
 
-    def get_listening_sockets(self):
+    @classmethod
+    def get_listening_sockets(cls):
         """Return a list of all listening sockets
-
         >>> Socket.get_listening_sockets()
         ['tcp://0.0.0.0:22', 'tcp://:::22', 'unix:///run/systemd/private', ...]
         """
         sockets = []
-        for sock in self._get_sockets(True):
+        for sock in cls(None).get_sockets(True):
             if sock[0] == "unix":
                 sockets.append("unix://" + sock[1])
             else:
@@ -176,36 +167,30 @@ class Socket(Module):
                 ))
         return sockets
 
-    def _get_sockets(self, listening):
+    def get_sockets(self, listening):
         raise NotImplementedError
 
-    def __call__(self, *args, **kwargs):
-        return self.__class__(self._backend, *args, **kwargs)
-
     def __repr__(self):
-        if self.protocol:
-            return "<socket %s://%s%s>" % (
-                self.protocol,
-                self.host + ":" if self.host else "",
-                self.port,
-            )
-        else:
-            return "<socket>"
+        return "<socket %s://%s%s>" % (
+            self.protocol,
+            self.host + ":" if self.host else "",
+            self.port,
+        )
 
     @classmethod
-    def get_module(cls, _backend):
+    def get_module_class(cls, _backend):
         SystemInfo = _backend.get_module("SystemInfo")
         if SystemInfo.type == "linux":
-            return LinuxSocket(_backend, None)
+            return LinuxSocket
         elif SystemInfo.type.endswith("bsd"):
-            return BSDSocket(_backend, None)
+            return BSDSocket
         else:
             raise NotImplementedError
 
 
 class LinuxSocket(Socket):
 
-    def _get_sockets(self, listening):
+    def get_sockets(self, listening):
         sockets = []
         cmd = "netstat -n"
 
@@ -247,7 +232,7 @@ class LinuxSocket(Socket):
 
 class BSDSocket(Socket):
 
-    def _get_sockets(self, listening):
+    def get_sockets(self, listening):
         sockets = []
         cmd = "netstat -n"
 
