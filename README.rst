@@ -24,9 +24,9 @@ Repo oficial::
     $ pip install 'git+https://github.com/philpep/testinfra@master#egg=testinfra'
 
 
-Repo nuestro::
+Las actualizaciones de este repo::
 
-   $ git clone git@pdihub.hi.inet:troitino/testinfra.git
+   $ git clone git@github.com:ftroitino/testinfra.git
 
    $ cd testinfra && sudo python2.7 setup.py install
 
@@ -89,14 +89,14 @@ File::
         file = File("/etc/fstab")
         assert file.exists
         assert file.is_file #test -f
-        assert file.contains('//granero-boe.hi.inet/coreshared-01   /coreshared')
+        assert file.contains('//nfs.hi.inet/shared-01   /shared')
         contenido = file.content_string
         print contenido
 
 Package::
 
     def test_m2m_gs_api_base_is_installed(Package):
-        pack = Package("m2m-gs-api-base")
+        pack = Package("gs-api-base")
         assert pack.is_installed
         assert pack.version.startswith("2.6.1")
 
@@ -119,7 +119,7 @@ Service::
 Repoyum::
 
     def test_exists_yumrepo_1(RepoYum):
-        url_yum_repo = RepoYum('http://artifactory.hi.inet/artifactory/yum-m2m-release/common/',)
+        url_yum_repo = RepoYum('http://rpms.hi.inet/common/',)
         assert url_yum_repo.exists
 
 
@@ -167,7 +167,7 @@ Interface::
     def test_eth0(Interface):
         interface = Interface("eth0")
         assert interface.exists
-        assert interface.addresses[0] == "10.95.7.121" #check ip
+        assert interface.addresses[0] == "192.95.7.121" #check ip
     #    assert interface.addresses[1] == "fe80::250:56ff:fea6:25fb" #IP V6
 
 SystemInfo::
@@ -181,7 +181,7 @@ SystemInfo::
         assert SystemInfo.uid == 528
         assert SystemInfo.group == 'sysadmin'
         assert SystemInfo.gid == 528
-        assert SystemInfo.hostname == 'cloncloud-m2mglobserv02'
+        assert SystemInfo.hostname == 'test02'
 
 Facter::
 
@@ -199,7 +199,7 @@ Http::
 Parametrizar test::
 
     @pytest.mark.parametrize("name,version", [
-        ("m2m-gs-api-base", "2.6.1"),
+        ("gs-api-base", "2.6.1"),
         ("python27", "2.7.9"),
     ])
     def test_packages(Package, name, version):
@@ -257,11 +257,9 @@ Remota con usuario sudo::
 referencias
 ###########
 
-    Testinfra M2M: ​https://pdihub.hi.inet/troitino/testinfra
+    Testinfra Original(Github): https://github.com/philpep/testinfra
 
     Testinfra modules: http://testinfra.readthedocs.org/en/latest/modules.html
-
-    Testinfra Original(Github): https://github.com/philpep/testinfra
 
     Salt: http://saltstack.com/
 
